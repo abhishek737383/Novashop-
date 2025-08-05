@@ -1,3 +1,4 @@
+// app/payment/page.tsx
 "use client";
 
 import React, {
@@ -11,60 +12,67 @@ import Image from "next/image";
 import { useSearchParams, useRouter } from "next/navigation";
 
 export default function PaymentPage() {
-  const params  = useSearchParams()!;
-  const router  = useRouter();
+  const params = useSearchParams();
+  const router = useRouter();
   const orderId = params.get("orderId");
 
-  const [txnId, setTxnId]           = useState("");
+  const [txnId, setTxnId] = useState("");
   const [screenshot, setScreenshot] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError]           = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const [upiId, setUpiId]     = useState("");
+  const [upiId, setUpiId] = useState("");
   const [qrCodeUrl, setQrUrl] = useState("");
+
+  // Fetch UPI settings once
   useEffect(() => {
     fetch("/api/settings")
-      .then(r => r.json())
-      .then(s => {
+      .then((r) => r.json())
+      .then((s) => {
         setUpiId(s.upiId);
         setQrUrl(s.qrCodeUrl);
+      })
+      .catch(() => {
+        // Optional: handle fetch error
       });
   }, []);
 
-  // Reference to the hidden file input
+  // File input ref + picker
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const openFilePicker = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
 
-  // When user selects a file, update both screenshot and previewUrl
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] ?? null;
     if (!file) return;
     setScreenshot(file);
 
-    // Revoke old URL if any
     if (previewUrl) URL.revokeObjectURL(previewUrl);
-    const blobUrl = URL.createObjectURL(file);
-    setPreviewUrl(blobUrl);
+    setPreviewUrl(URL.createObjectURL(file));
   };
 
-  // Clean up preview URL if component unmounts
+  // Cleanup preview URL on unmount
   useEffect(() => {
     return () => {
       if (previewUrl) URL.revokeObjectURL(previewUrl);
     };
   }, [previewUrl]);
 
-  // Open file picker when box is clicked
-  const openFilePicker = useCallback(() => {
-    fileInputRef.current?.click();
-  }, []);
-
   const handleSubmit = async () => {
-    if (!orderId || !txnId.trim() || !screenshot) {
-      return setError("Please complete all steps.");
+    if (!orderId) {
+      setError("Missing order ID in URL.");
+      return;
     }
+    if (!txnId.trim() || !screenshot) {
+      setError("Please complete all steps.");
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
+
     try {
       const form = new FormData();
       form.append("orderId", orderId);
@@ -73,15 +81,17 @@ export default function PaymentPage() {
 
       const res = await fetch("/api/payments", {
         method: "POST",
-        body:   form,
+        body: form,
       });
+
       if (!res.ok) {
         const body = await res.json().catch(() => null);
         throw new Error(body?.message || `Status ${res.status}`);
       }
+
       router.push(`/thank-you?orderId=${orderId}&txnId=${txnId}`);
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || "Submission failed.");
     } finally {
       setSubmitting(false);
     }
@@ -94,56 +104,62 @@ export default function PaymentPage() {
           Complete Your Payment
         </h1>
 
-        {/* Step 1 */}
-        <div className="space-y-4">
+        {/* Step 1: UPI Info */}
+        <section className="space-y-4">
           <h2 className="text-lg font-semibold">Step 1: Make Payment via UPI</h2>
           <p>Use the UPI ID below or scan the QR code:</p>
           <div className="flex flex-col sm:flex-row items-center gap-6">
             <div className="flex-1">
-              <p className="font-mono bg-gray-100 p-3 rounded text-center">{upiId}</p>
-              <button
-                onClick={() => navigator.clipboard.writeText(upiId)}
-                className="mt-2 bg-indigo-600 text-white px-4 py-1 rounded hover:bg-indigo-700 transition"
-              >
-                Copy UPI ID
-              </button>
+              <p className="font-mono bg-gray-100 p-3 rounded text-center">
+                {upiId || "Loading UPI..."}
+              </p>
+              {upiId && (
+                <button
+                  onClick={() => navigator.clipboard.writeText(upiId)}
+                  className="mt-2 bg-indigo-600 text-white px-4 py-1 rounded hover:bg-indigo-700 transition"
+                >
+                  Copy UPI ID
+                </button>
+              )}
             </div>
             <div className="flex-1">
-              {qrCodeUrl && (
+              {qrCodeUrl ? (
                 <Image
                   src={qrCodeUrl}
                   alt="UPI QR Code"
-                  width={600}
-                  height={600}
-                  unoptimized    
+                  width={300}
+                  height={300}
+                  unoptimized
                   className="mx-auto"
                 />
+              ) : (
+                <p className="text-center text-gray-400">Loading QR code…</p>
               )}
             </div>
           </div>
-        </div>
+        </section>
 
-        {/* Step 2 */}
-        <div className="space-y-2">
+        {/* Step 2: Transaction ID */}
+        <section className="space-y-2">
           <h2 className="text-lg font-semibold">Step 2: Enter Transaction ID</h2>
           <input
             type="text"
             placeholder="Transaction ID"
             value={txnId}
-            onChange={e => setTxnId(e.target.value)}
+            onChange={(e) => setTxnId(e.target.value)}
             className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-400"
           />
-        </div>
+        </section>
 
-        {/* Step 3: Premium Upload Box */}
-        <div className="space-y-2">
+        {/* Step 3: Screenshot Upload */}
+        <section className="space-y-2">
           <h2 className="text-lg font-semibold">Step 3: Upload Payment Screenshot</h2>
           <input
             ref={fileInputRef}
             type="file"
             accept="image/*"
             onChange={handleFileChange}
-            style={{ display: "none" }}
+            className="hidden"
           />
 
           <div
@@ -182,14 +198,14 @@ export default function PaymentPage() {
               </>
             )}
           </div>
-        </div>
+        </section>
 
-        {error && <p className="text-red-500">{error}</p>}
+        {error && <p className="text-red-500 text-center">{error}</p>}
 
         <button
           onClick={handleSubmit}
           disabled={submitting}
-          className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition"
+          className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition disabled:opacity-50"
         >
           {submitting ? "Submitting…" : "Submit Payment"}
         </button>

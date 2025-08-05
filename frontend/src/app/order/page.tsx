@@ -1,4 +1,5 @@
 "use client";
+
 import React, { useState } from "react";
 import Image from "next/image";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -15,8 +16,8 @@ type OrderForm = {
 };
 
 export default function OrderPage() {
-  const params     = useSearchParams()!;
-  const router     = useRouter();
+  const params    = useSearchParams();
+  const router    = useRouter();
 
   // Product data from URL
   const name       = params.get("name")  || "";
@@ -31,7 +32,7 @@ export default function OrderPage() {
   const total = images.length;
 
   // Form state
-  const [form, setForm]       = useState<OrderForm>({
+  const [form, setForm]           = useState<OrderForm>({
     fullName:  "",
     contactNo: "",
     city:      "",
@@ -42,7 +43,7 @@ export default function OrderPage() {
     color:     "",
   });
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError]           = useState<string|null>(null);
+  const [error, setError]           = useState<string | null>(null);
 
   // Slider controls
   const prev = () => setCurrent(c => (c === 0 ? total - 1 : c - 1));
@@ -58,13 +59,14 @@ export default function OrderPage() {
 
   // Submit order
   const handleSubmit = async () => {
-    // simple client-side validation
     if (!form.size.trim()) {
-      return setError("Please enter a size.");
+      setError("Please enter a size.");
+      return;
     }
 
     setSubmitting(true);
     setError(null);
+
     try {
       const payload = {
         productName: name,
@@ -78,12 +80,9 @@ export default function OrderPage() {
         body:    JSON.stringify(payload),
       });
       const body = await res.json();
-      if (!res.ok) {
-        throw new Error(body?.message || `Status ${res.status}`);
-      }
+      if (!res.ok) throw new Error(body?.message || `Status ${res.status}`);
 
-      // *** New: redirect to payment page ***
-      // Pass orderId, images and index in query
+      // Redirect to payment page with orderId + images + index
       const q = new URLSearchParams();
       q.set("orderId", body._id);
       images.forEach(img => q.append("allImages", img));
@@ -210,12 +209,12 @@ export default function OrderPage() {
             />
           </div>
 
-          {error && <p className="text-red-500">{error}</p>}
+          {error && <p className="text-red-500 text-center">{error}</p>}
 
           <button
             onClick={handleSubmit}
             disabled={submitting}
-            className="w-full bg-indigo-600 text-white py-4 rounded-xl text-lg font-semibold hover:bg-indigo-700 transition"
+            className="w-full bg-indigo-600 text-white py-4 rounded-xl text-lg font-semibold hover:bg-indigo-700 transition disabled:opacity-50"
           >
             {submitting ? "Placing Order…" : "Confirm Order"}
           </button>
