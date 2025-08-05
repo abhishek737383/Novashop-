@@ -1,6 +1,4 @@
-// frontend/app/order/page.tsx
 "use client";
-
 import React, { useState } from "react";
 import Image from "next/image";
 import { useSearchParams, useRouter } from "next/navigation";
