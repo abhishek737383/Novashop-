@@ -10,8 +10,4 @@ module.exports = {
       "localhost",
     ],
   },
-  eslint: {
-    // WARNING: you’ll skip *all* lint errors, including real bugs!
-    ignoreDuringBuilds: true,
-  },
 };
