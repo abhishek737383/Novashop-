@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 
-module.exports = {
+const nextConfig = {
   reactStrictMode: true,
   images: {
     domains: [
@@ -9,9 +9,11 @@ module.exports = {
       "images.unsplash.com",
       "localhost",
     ],
+  },
   eslint: {
     // Warning: turns off all ESLint checks during `next build`
     ignoreDuringBuilds: true,
   },
-  },
 };
+
+module.exports = nextConfig;
