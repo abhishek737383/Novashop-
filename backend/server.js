@@ -14,7 +14,7 @@ const app = express();
 // Middleware
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://your-frontend-domain.com'] // Add your frontend domain
+    ? ['https://novashops.netlify.app'] // Add your frontend domain
     : ['http://localhost:3000', 'http://localhost:3001'],
   credentials: true
 }));
